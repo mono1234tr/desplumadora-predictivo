@@ -1,3 +1,5 @@
+# app_desplumadora.py (con mejoras visuales y personalización azul claro)
+
 import streamlit as st
 import pandas as pd
 from datetime import date
@@ -33,21 +35,23 @@ st.set_page_config(page_title="Desplumadora Predictiva", layout="wide")
 col1, col2 = st.columns([5, 1])
 with col1:
     st.markdown("""
-    <h1 style='color:#1f77b4;'> Mantenimiento Predictivo - Desplumadora TEKPRO</h1>
+    <h1 style='color:#1f77b4;'>🔧 Mantenimiento Predictivo - Desplumadora TEKPRO</h1>
     """, unsafe_allow_html=True)
 
 with col2:
-    st.image("https://i0.wp.com/tekpro.com.co/wp-content/uploads/2023/12/cropped-logo-tekpro-main-retina.png?fit=522%2C145&ssl=1", width=100)  # logo desde URL
+    st.image("https://i.imgur.com/1X3bH0z.png", width=100)  # logo desde URL
 
 st.markdown("---")
 
 # =============================
 # FORMULARIO DE USO
 # =============================
-st.subheader(" Ingreso diario de uso")
+st.subheader(":clipboard: Ingreso diario de uso")
+
+EMPRESAS = ["Paulandia", "Pollocoa", "Granja Azul", "Avícola Chone"]
 
 with st.form("registro_form"):
-    empresa = st.text_input("Nombre de la empresa")
+    empresa = st.selectbox("Nombre de la empresa", EMPRESAS)
     col1, col2 = st.columns(2)
     with col1:
         fecha = st.date_input("Fecha", value=date.today())
@@ -58,23 +62,24 @@ with st.form("registro_form"):
 
     enviar = st.form_submit_button("Guardar registro")
     if enviar:
-        if empresa.strip() == "":
-            st.warning("⚠️ Por favor ingresa el nombre de la empresa.")
-        else:
-            fila = [empresa, str(fecha), horas, ";".join(partes), observaciones]
-            sheet.append_row(fila)
-            st.success("✅ Registro guardado exitosamente.")
+        fila = [empresa, str(fecha), horas, ";".join(partes), observaciones]
+        sheet.append_row(fila)
+        st.success("✅ Registro guardado exitosamente.")
 
 # =============================
-# ESTADO DE COMPONENTES
+# ESTADO DE COMPONENTES POR EMPRESA
 # =============================
-st.subheader(":gear: Estado actual de las partes")
+st.subheader(":factory: Estado actual por empresa")
 
-# Cargar datos
+empresa_seleccionada = st.selectbox("Selecciona una empresa para ver su estado", EMPRESAS)
+
+# Cargar datos y filtrar por empresa seleccionada
 data = pd.DataFrame(sheet.get_all_records())
+data_empresa = data[data["Empresa"] == empresa_seleccionada]
+
 estado_partes = {parte: 0 for parte in VIDA_UTIL}
 
-for _, fila in data.iterrows():
+for _, fila in data_empresa.iterrows():
     horas_dia = fila["Horas de uso"]
     cambiadas = fila["Partes cambiadas"].split(";") if fila["Partes cambiadas"] else []
     for parte in VIDA_UTIL:
@@ -83,7 +88,7 @@ for _, fila in data.iterrows():
         else:
             estado_partes[parte] += horas_dia
 
-# Mostrar estados
+# Mostrar estados por empresa
 for parte, usadas in estado_partes.items():
     limite = VIDA_UTIL[parte]
     restantes = limite - usadas
@@ -95,10 +100,10 @@ for parte, usadas in estado_partes.items():
         color, estado = "🔹", "Advertencia"
     else:
         color, estado = "🔵", "Bueno"
-    st.markdown(f"{color} **{parte}**: {usadas:.1f} / {limite} h | Estado: `{estado}`")
+    st.markdown(f"{color} **{parte}**: {usadas:.1f} h | Estado: `{estado}`")
 
 # =============================
-# HISTORIAL
+# HISTORIAL FILTRADO
 # =============================
-with st.expander(":scroll: Ver historial de registros"):
-    st.dataframe(data, use_container_width=True)
+with st.expander(":scroll: Ver historial de registros por empresa"):
+    st.dataframe(data_empresa, use_container_width=True)
