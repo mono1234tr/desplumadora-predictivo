@@ -1,22 +1,22 @@
 import streamlit as st
 import pandas as pd
 from datetime import date
-import gspread
 import json
 from google.oauth2.service_account import Credentials
+import gspread
 
-# ID de la hoja de Google Sheets
-SHEET_ID = "1288rxOwtZDI3A7kuLnR4AXaI-GKt6YizeZS_4ZvdTnQ"
-SHEET_NAME = "Hoja 1"  # Asegúrate que la hoja se llame así o cámbialo aquí
-
-# Autenticación con Google Sheets
-SCOPE = ["https://www.googleapis.com/auth/spreadsheets"]
+# Leer credenciales desde secrets
 service_account_info = json.loads(st.secrets["GOOGLE_CREDENTIALS"])
+SCOPE = ["https://www.googleapis.com/auth/spreadsheets"]
 creds = Credentials.from_service_account_info(service_account_info, scopes=SCOPE)
 client = gspread.authorize(creds)
+
+# Google Sheet ID y hoja
+SHEET_ID = "1288rxOwtZDI3A7kuLnR4AXaI-GKt6YizeZS_4ZvdTnQ"
+SHEET_NAME = "Hoja 1"
 sheet = client.open_by_key(SHEET_ID).worksheet(SHEET_NAME)
-    
-# Definir vida útil por parte (en horas)
+
+# Vida útil por parte
 VIDA_UTIL = {
     "Dedos de goma": 720,
     "Platos porta dedos": 2160,
@@ -25,74 +25,80 @@ VIDA_UTIL = {
     "Motores": 25920,
 }
 
-# Título
-st.title(" Mantenimiento Predictivo - Desplumadora TEKPRO")
+# =============================
+# ESTILOS Y ENCABEZADO
+# =============================
+st.set_page_config(page_title="Desplumadora Predictiva", layout="wide")
 
-# ======================
-# Ingreso de datos
-# ======================
-st.header(" Ingreso diario de uso")
+col1, col2 = st.columns([5, 1])
+with col1:
+    st.markdown("""
+    <h1 style='color:#1f77b4;'> Mantenimiento Predictivo - Desplumadora TEKPRO</h1>
+    """, unsafe_allow_html=True)
 
-empresa = st.text_input("Nombre de la empresa")
-fecha = st.date_input("Fecha", value=date.today())
-horas = st.number_input("Horas de uso", min_value=0.0, step=0.5)
-partes = st.multiselect("Partes cambiadas hoy", list(VIDA_UTIL.keys()))
-observaciones = st.text_area("Observaciones")
+with col2:
+    st.image("https://i0.wp.com/tekpro.com.co/wp-content/uploads/2023/12/cropped-logo-tekpro-main-retina.png?fit=522%2C145&ssl=1", width=100)  # logo desde URL
 
-if st.button("Guardar registro"):
-    if empresa.strip() == "":
-        st.warning("⚠️ Por favor ingresa el nombre de la empresa antes de guardar.")
-    else:
-        fila = [empresa, str(fecha), horas, ";".join(partes), observaciones]
-        sheet.append_row(fila)
-        st.success("✅ Registro guardado exitosamente.")
+st.markdown("---")
 
-# ======================
-# Estado de componentes
-# ======================
-st.header("🔧 Estado actual de las partes")
+# =============================
+# FORMULARIO DE USO
+# =============================
+st.subheader(" Ingreso diario de uso")
 
-# Leer todos los registros desde la hoja
+with st.form("registro_form"):
+    empresa = st.text_input("Nombre de la empresa")
+    col1, col2 = st.columns(2)
+    with col1:
+        fecha = st.date_input("Fecha", value=date.today())
+    with col2:
+        horas = st.number_input("Horas de uso", min_value=0.0, step=0.5)
+    partes = st.multiselect("Partes cambiadas hoy", list(VIDA_UTIL.keys()))
+    observaciones = st.text_area("Observaciones")
+
+    enviar = st.form_submit_button("Guardar registro")
+    if enviar:
+        if empresa.strip() == "":
+            st.warning("⚠️ Por favor ingresa el nombre de la empresa.")
+        else:
+            fila = [empresa, str(fecha), horas, ";".join(partes), observaciones]
+            sheet.append_row(fila)
+            st.success("✅ Registro guardado exitosamente.")
+
+# =============================
+# ESTADO DE COMPONENTES
+# =============================
+st.subheader(":gear: Estado actual de las partes")
+
+# Cargar datos
 data = pd.DataFrame(sheet.get_all_records())
-
-# Inicializar horas acumuladas
 estado_partes = {parte: 0 for parte in VIDA_UTIL}
 
-# Procesar historial para calcular uso acumulado
 for _, fila in data.iterrows():
     horas_dia = fila["Horas de uso"]
     cambiadas = fila["Partes cambiadas"].split(";") if fila["Partes cambiadas"] else []
     for parte in VIDA_UTIL:
         if parte in cambiadas:
-            estado_partes[parte] = 0  # Reiniciar contador si fue cambiada
+            estado_partes[parte] = 0
         else:
             estado_partes[parte] += horas_dia
 
-
-# Mostrar estado de cada componente
-# Mostrar estado de cada componente basado en horas restantes
+# Mostrar estados
 for parte, usadas in estado_partes.items():
     limite = VIDA_UTIL[parte]
-    horas_restantes = limite - usadas
-
-    if horas_restantes <= 0:
-        color = "🔴"
-        estado = "Falla esperada"
-    elif horas_restantes <= 192:
-        color = "🔴"
-        estado = "Crítico"
-    elif horas_restantes <= 360:
-        color = "🟡"
-        estado = "Advertencia"
+    restantes = limite - usadas
+    if restantes <= 24:
+        color, estado = "⚠️", "Falla esperada"
+    elif restantes <= 192:
+        color, estado = "🔴", "Crítico"
+    elif restantes <= 360:
+        color, estado = "🔹", "Advertencia"
     else:
-        color = "🟢"
-        estado = "Bueno"
+        color, estado = "🔵", "Bueno"
+    st.markdown(f"{color} **{parte}**: {usadas:.1f} / {limite} h | Estado: `{estado}`")
 
-    st.write(f"{color} **{parte}** — {usadas:.1f} / {limite} horas  | Estado: {estado}")
-
-
-# ======================
-# Historial completo
-# ======================
-with st.expander("📜 Ver historial de registros"):
-    st.dataframe(data)
+# =============================
+# HISTORIAL
+# =============================
+with st.expander(":scroll: Ver historial de registros"):
+    st.dataframe(data, use_container_width=True)
