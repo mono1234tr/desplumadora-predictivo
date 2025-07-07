@@ -1,5 +1,3 @@
-# app_desplumadora.py
-
 import streamlit as st
 import pandas as pd
 from datetime import date
@@ -35,22 +33,20 @@ st.set_page_config(page_title="Desplumadora Predictiva", layout="wide")
 col1, col2 = st.columns([5, 1])
 with col1:
     st.markdown("""
-    <h1 style='color:#1f77b4;'> Mantenimiento Predictivo - Desplumadora TEKPRO</h1>
+    <h1 style='color:#1f77b4;'>🔧 Mantenimiento Predictivo - Desplumadora TEKPRO</h1>
     """, unsafe_allow_html=True)
 
 with col2:
-    st.image("https://pbs.twimg.com/profile_images/1487153447061368833/H5EKoCGk_400x400.jpg", width=100)
+    st.image("https://i.imgur.com/1X3bH0z.png", width=100)  # logo desde URL
 
 st.markdown("---")
 
 # =============================
 # FORMULARIO DE USO
 # =============================
-st.subheader("Ingreso diario de uso")
+st.subheader(":clipboard: Ingreso diario de uso")
 
 EMPRESAS = ["Paulandia", "Pollocoa", "Granja Azul", "Avícola Chone"]
-
-HEADERS = ["empresa", "Fecha", "Horas de uso", "Partes cambiadas", "Observaciones"]
 
 with st.form("registro_form"):
     empresa = st.selectbox("Nombre de la empresa", EMPRESAS)
@@ -64,9 +60,6 @@ with st.form("registro_form"):
 
     enviar = st.form_submit_button("Guardar registro")
     if enviar:
-        if sheet.row_count == 0 or sheet.get_all_values() == []:
-            sheet.append_row(HEADERS)
-
         fila = [empresa, str(fecha), horas, ";".join(partes), observaciones]
         sheet.append_row(fila)
         st.success("✅ Registro guardado exitosamente.")
@@ -78,24 +71,22 @@ st.subheader(":factory: Estado actual por empresa")
 
 empresa_seleccionada = st.selectbox("Selecciona una empresa para ver su estado", EMPRESAS)
 
+# Cargar datos y filtrar por empresa seleccionada
 data = pd.DataFrame(sheet.get_all_records())
-data.columns = [col.strip().lower() for col in data.columns]
+data_empresa = data[data["Empresa"] == empresa_seleccionada]
+
 estado_partes = {parte: 0 for parte in VIDA_UTIL}
 
-if not data.empty and "empresa" in data.columns:
-    data_empresa = data[data["empresa"] == empresa_seleccionada]
+for _, fila in data_empresa.iterrows():
+    horas_dia = fila["Horas de uso"]
+    cambiadas = fila["Partes cambiadas"].split(";") if fila["Partes cambiadas"] else []
+    for parte in VIDA_UTIL:
+        if parte in cambiadas:
+            estado_partes[parte] = 0
+        else:
+            estado_partes[parte] += horas_dia
 
-    for _, fila in data_empresa.iterrows():
-        horas_dia = fila["Horas de uso"]
-        cambiadas = fila["Partes cambiadas"].split(";") if fila["Partes cambiadas"] else []
-        for parte in VIDA_UTIL:
-            if parte in cambiadas:
-                estado_partes[parte] = 0
-            else:
-                estado_partes[parte] += horas_dia
-else:
-    st.info(" No hay datos registrados aún.")
-
+# Mostrar estados por empresa
 for parte, usadas in estado_partes.items():
     limite = VIDA_UTIL[parte]
     restantes = limite - usadas
@@ -104,17 +95,13 @@ for parte, usadas in estado_partes.items():
     elif restantes <= 192:
         color, estado = "🔴", "Crítico"
     elif restantes <= 360:
-        color, estado = "🟡", "Advertencia"
+        color, estado = "🔹", "Advertencia"
     else:
-        color, estado = "🟢", "Bueno"
+        color, estado = "🔵", "Bueno"
     st.markdown(f"{color} **{parte}**: {usadas:.1f} h | Estado: `{estado}`")
 
 # =============================
 # HISTORIAL FILTRADO
 # =============================
-with st.expander(" Ver historial de registros por empresa"):
-    data.columns = [col.strip().lower() for col in data.columns]
-    if not data.empty and "empresa" in data.columns:
-        st.dataframe(data[data["empresa"] == empresa_seleccionada], use_container_width=True)
-    else:
-        st.write("No hay registros para mostrar.")
+with st.expander(":scroll: Ver historial de registros por empresa"):
+    st.dataframe(data_empresa, use_container_width=True)
