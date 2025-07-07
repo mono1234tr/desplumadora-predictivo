@@ -1,0 +1,5 @@
+# Ignorar claves sensibles y archivos locales
+credentials.json
+.streamlit/secrets.toml
+__pycache__/
+*.pyc
