@@ -1,4 +1,4 @@
-# app_desplumadora.py (con mejoras visuales y personalización azul claro)
+# app_desplumadora.py
 
 import streamlit as st
 import pandas as pd
@@ -39,7 +39,7 @@ with col1:
     """, unsafe_allow_html=True)
 
 with col2:
-    st.image("https://pbs.twimg.com/profile_images/1487153447061368833/H5EKoCGk_400x400.jpg", width=100)  # logo desde URL
+    st.image("https://pbs.twimg.com/profile_images/1487153447061368833/H5EKoCGk_400x400.jpg", width=100)
 
 st.markdown("---")
 
@@ -49,6 +49,8 @@ st.markdown("---")
 st.subheader("Ingreso diario de uso")
 
 EMPRESAS = ["Paulandia", "Pollocoa", "Granja Azul", "Avícola Chone"]
+
+HEADERS = ["empresa", "Fecha", "Horas de uso", "Partes cambiadas", "Observaciones"]
 
 with st.form("registro_form"):
     empresa = st.selectbox("Nombre de la empresa", EMPRESAS)
@@ -62,6 +64,9 @@ with st.form("registro_form"):
 
     enviar = st.form_submit_button("Guardar registro")
     if enviar:
+        if sheet.row_count == 0 or sheet.get_all_values() == []:
+            sheet.append_row(HEADERS)
+
         fila = [empresa, str(fecha), horas, ";".join(partes), observaciones]
         sheet.append_row(fila)
         st.success("✅ Registro guardado exitosamente.")
@@ -73,9 +78,8 @@ st.subheader(":factory: Estado actual por empresa")
 
 empresa_seleccionada = st.selectbox("Selecciona una empresa para ver su estado", EMPRESAS)
 
-# Cargar datos y filtrar por empresa seleccionada
 data = pd.DataFrame(sheet.get_all_records())
-
+data.columns = [col.strip().lower() for col in data.columns]
 estado_partes = {parte: 0 for parte in VIDA_UTIL}
 
 if not data.empty and "empresa" in data.columns:
@@ -90,9 +94,8 @@ if not data.empty and "empresa" in data.columns:
             else:
                 estado_partes[parte] += horas_dia
 else:
-    st.info(" No hay datos registrados aún. Mostrando horas en 0.")
+    st.info(" No hay datos registrados aún.")
 
-# Mostrar estados por empresa
 for parte, usadas in estado_partes.items():
     limite = VIDA_UTIL[parte]
     restantes = limite - usadas
@@ -110,6 +113,7 @@ for parte, usadas in estado_partes.items():
 # HISTORIAL FILTRADO
 # =============================
 with st.expander(" Ver historial de registros por empresa"):
+    data.columns = [col.strip().lower() for col in data.columns]
     if not data.empty and "empresa" in data.columns:
         st.dataframe(data[data["empresa"] == empresa_seleccionada], use_container_width=True)
     else:
