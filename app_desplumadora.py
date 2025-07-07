@@ -33,18 +33,18 @@ st.set_page_config(page_title="Desplumadora Predictiva", layout="wide")
 col1, col2 = st.columns([5, 1])
 with col1:
     st.markdown("""
-    <h1 style='color:#1f77b4;'>🔧 Mantenimiento Predictivo - Desplumadora TEKPRO</h1>
+    <h1 style='color:#1f77b4;'> Mantenimiento Predictivo - Desplumadora TEKPRO</h1>
     """, unsafe_allow_html=True)
 
 with col2:
-    st.image("https://i.imgur.com/1X3bH0z.png", width=100)  # logo desde URL
+    st.image("https://pbs.twimg.com/profile_images/1487153447061368833/H5EKoCGk_400x400.jpg", width=300)  # logo desde URL
 
 st.markdown("---")
 
 # =============================
 # FORMULARIO DE USO
 # =============================
-st.subheader(":clipboard: Ingreso diario de uso")
+st.subheader(" Ingreso diario de uso")
 
 EMPRESAS = ["Paulandia", "Pollocoa", "Granja Azul", "Avícola Chone"]
 
@@ -67,7 +67,7 @@ with st.form("registro_form"):
 # =============================
 # ESTADO DE COMPONENTES POR EMPRESA
 # =============================
-st.subheader(":factory: Estado actual por empresa")
+st.subheader(" Estado actual por empresa")
 
 empresa_seleccionada = st.selectbox("Selecciona una empresa para ver su estado", EMPRESAS)
 
@@ -95,13 +95,13 @@ for parte, usadas in estado_partes.items():
     elif restantes <= 192:
         color, estado = "🔴", "Crítico"
     elif restantes <= 360:
-        color, estado = "🔹", "Advertencia"
+        color, estado = "🟡", "Advertencia"
     else:
-        color, estado = "🔵", "Bueno"
+        color, estado = "🟢", "Bueno"
     st.markdown(f"{color} **{parte}**: {usadas:.1f} h | Estado: `{estado}`")
 
 # =============================
 # HISTORIAL FILTRADO
 # =============================
-with st.expander(":scroll: Ver historial de registros por empresa"):
+with st.expander(" Ver historial de registros por empresa"):
     st.dataframe(data_empresa, use_container_width=True)
