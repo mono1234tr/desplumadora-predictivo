@@ -46,7 +46,7 @@ st.markdown("---")
 # =============================
 # FORMULARIO DE USO
 # =============================
-st.subheader(" Ingreso diario de uso")
+st.subheader("Ingreso diario de uso")
 
 EMPRESAS = ["Paulandia", "Pollocoa", "Granja Azul", "Avícola Chone"]
 
@@ -69,24 +69,28 @@ with st.form("registro_form"):
 # =============================
 # ESTADO DE COMPONENTES POR EMPRESA
 # =============================
-st.subheader(" Estado actual por empresa")
+st.subheader(":factory: Estado actual por empresa")
 
 empresa_seleccionada = st.selectbox("Selecciona una empresa para ver su estado", EMPRESAS)
 
 # Cargar datos y filtrar por empresa seleccionada
 data = pd.DataFrame(sheet.get_all_records())
-data_empresa = data[data["Empresa"] == empresa_seleccionada]
 
 estado_partes = {parte: 0 for parte in VIDA_UTIL}
 
-for _, fila in data_empresa.iterrows():
-    horas_dia = fila["Horas de uso"]
-    cambiadas = fila["Partes cambiadas"].split(";") if fila["Partes cambiadas"] else []
-    for parte in VIDA_UTIL:
-        if parte in cambiadas:
-            estado_partes[parte] = 0
-        else:
-            estado_partes[parte] += horas_dia
+if not data.empty and "empresa" in data.columns:
+    data_empresa = data[data["empresa"] == empresa_seleccionada]
+
+    for _, fila in data_empresa.iterrows():
+        horas_dia = fila["Horas de uso"]
+        cambiadas = fila["Partes cambiadas"].split(";") if fila["Partes cambiadas"] else []
+        for parte in VIDA_UTIL:
+            if parte in cambiadas:
+                estado_partes[parte] = 0
+            else:
+                estado_partes[parte] += horas_dia
+else:
+    st.info(" No hay datos registrados aún. Mostrando horas en 0.")
 
 # Mostrar estados por empresa
 for parte, usadas in estado_partes.items():
@@ -106,4 +110,7 @@ for parte, usadas in estado_partes.items():
 # HISTORIAL FILTRADO
 # =============================
 with st.expander(" Ver historial de registros por empresa"):
-    st.dataframe(data_empresa, use_container_width=True)
+    if not data.empty and "empresa" in data.columns:
+        st.dataframe(data[data["empresa"] == empresa_seleccionada], use_container_width=True)
+    else:
+        st.write("No hay registros para mostrar.")
